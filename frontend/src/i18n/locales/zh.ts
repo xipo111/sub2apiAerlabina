@@ -1,4 +1,4 @@
-export default {
+﻿export default {
   // Home Page
   home: {
     viewOnGithub: '在 GitHub 上查看',
@@ -345,6 +345,7 @@ export default {
     announcements: '公告',
     apiKeys: 'API 密钥',
     usage: '使用记录',
+    imageGenerator: 'AI 出图',
     redeem: '兑换',
     affiliate: '邀请返利',
     affiliateManagement: '邀请返利',
@@ -385,6 +386,30 @@ export default {
     riskControl: '风控中心',
   },
 
+  imageGenerator: {
+    title: 'AI 出图',
+    description: '使用账户余额生成图片',
+    currentBalance: '当前余额',
+    prompt: '提示词',
+    promptPlaceholder: '描述你想生成的图片',
+    promptHint: '支持中文或英文描述',
+    model: '模型',
+    size: '尺寸',
+    quality: '质量',
+    count: '数量',
+    qualityAuto: '自动',
+    qualityLow: '低',
+    qualityMedium: '中',
+    qualityHigh: '高',
+    billingNote: '生成成功后按实际用量扣费，失败不会扣费。',
+    generate: '生成图片',
+    generating: '生成中...',
+    generateFailed: '生成失败，请稍后重试',
+    waitingResult: '正在生成图片',
+    empty: '生成结果会显示在这里',
+    imageLabel: '图片 {index}',
+    download: '下载'
+  },
   // Auth
   auth: {
     welcomeBack: '欢迎回来',

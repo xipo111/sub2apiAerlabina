@@ -1,4 +1,4 @@
-export default {
+﻿export default {
   // Home Page
   home: {
     viewOnGithub: 'View on GitHub',
@@ -345,6 +345,7 @@ export default {
     announcements: 'Announcements',
     apiKeys: 'API Keys',
     usage: 'Usage',
+    imageGenerator: 'AI Images',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',
     affiliateManagement: 'Affiliate Rebates',
@@ -385,6 +386,30 @@ export default {
     riskControl: 'Risk Control',
   },
 
+  imageGenerator: {
+    title: 'AI Images',
+    description: 'Generate images with your account balance',
+    currentBalance: 'Current Balance',
+    prompt: 'Prompt',
+    promptPlaceholder: 'Describe the image you want to generate',
+    promptHint: 'Chinese and English prompts are supported',
+    model: 'Model',
+    size: 'Size',
+    quality: 'Quality',
+    count: 'Count',
+    qualityAuto: 'Auto',
+    qualityLow: 'Low',
+    qualityMedium: 'Medium',
+    qualityHigh: 'High',
+    billingNote: 'Usage is charged after successful generation. Failed requests are not charged.',
+    generate: 'Generate',
+    generating: 'Generating...',
+    generateFailed: 'Generation failed. Please try again later.',
+    waitingResult: 'Generating image',
+    empty: 'Generated images will appear here',
+    imageLabel: 'Image {index}',
+    download: 'Download'
+  },
   // Auth
   auth: {
     welcomeBack: 'Welcome Back',
