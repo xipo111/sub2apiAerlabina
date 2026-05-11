@@ -72,6 +72,7 @@ func RegisterUserRoutes(
 
 		images := authenticated.Group("/images")
 		{
+			images.GET("/models", h.OpenAIGateway.ListWebImageModels)
 			images.POST("/generate", h.OpenAIGateway.GenerateWebImage)
 		}
 

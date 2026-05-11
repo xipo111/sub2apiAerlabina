@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -18,9 +19,9 @@ import (
 const webImageGeneratorAPIKeyName = "Web Image Generator"
 
 var (
-	webImageAllowedModels = map[string]struct{}{
-		"gpt-image-1.5": {},
-		"gpt-image-1-mini": {},
+	defaultWebImageModels = []string{
+		"gpt-image-1.5",
+		"gpt-image-1-mini",
 	}
 	webImageAllowedSizes = map[string]string{
 		"1024x1024": "1K",
@@ -45,6 +46,25 @@ type webImageGenerateRequest struct {
 	N       int    `json:"n"`
 }
 
+type webImageModelItem struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
+func (h *OpenAIGatewayHandler) ListWebImageModels(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "Unauthorized")
+		return
+	}
+	models, err := h.availableWebImageModels(c.Request.Context(), subject.UserID)
+	if err != nil {
+		writeWebImageError(c, err)
+		return
+	}
+	response.Success(c, models)
+}
+
 func (h *OpenAIGatewayHandler) GenerateWebImage(c *gin.Context) {
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {
@@ -61,7 +81,12 @@ func (h *OpenAIGatewayHandler) GenerateWebImage(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	normalized, sizeTier, err := normalizeWebImageRequest(req)
+	availableModels, err := h.availableWebImageModelSet(c.Request.Context(), subject.UserID)
+	if err != nil {
+		writeWebImageError(c, err)
+		return
+	}
+	normalized, sizeTier, err := normalizeWebImageRequest(req, availableModels)
 	if err != nil {
 		response.BadRequest(c, err.Error())
 		return
@@ -102,7 +127,7 @@ func (h *OpenAIGatewayHandler) GenerateWebImage(c *gin.Context) {
 	h.Images(c)
 }
 
-func normalizeWebImageRequest(req webImageGenerateRequest) (webImageGenerateRequest, string, error) {
+func normalizeWebImageRequest(req webImageGenerateRequest, availableModels map[string]struct{}) (webImageGenerateRequest, string, error) {
 	req.Model = strings.TrimSpace(req.Model)
 	req.Prompt = strings.TrimSpace(req.Prompt)
 	req.Size = strings.TrimSpace(req.Size)
@@ -119,7 +144,7 @@ func normalizeWebImageRequest(req webImageGenerateRequest) (webImageGenerateRequ
 	if req.N == 0 {
 		req.N = 1
 	}
-	if _, ok := webImageAllowedModels[req.Model]; !ok {
+	if _, ok := availableModels[req.Model]; !ok {
 		return req, "", fmt.Errorf("unsupported image model")
 	}
 	if req.Prompt == "" {
@@ -141,12 +166,106 @@ func normalizeWebImageRequest(req webImageGenerateRequest) (webImageGenerateRequ
 	return req, sizeTier, nil
 }
 
+func (h *OpenAIGatewayHandler) availableWebImageModelSet(ctx context.Context, userID int64) (map[string]struct{}, error) {
+	models, err := h.availableWebImageModels(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]struct{}, len(models))
+	for _, model := range models {
+		if model.Value != "" {
+			out[model.Value] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
+func (h *OpenAIGatewayHandler) availableWebImageModels(ctx context.Context, userID int64) ([]webImageModelItem, error) {
+	if h.apiKeyService == nil {
+		return nil, fmt.Errorf("image generation is not available")
+	}
+	groups, err := h.apiKeyService.GetAvailableGroups(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	imageGroupIDs := make(map[int64]struct{})
+	for i := range groups {
+		group := &groups[i]
+		if group.Platform == service.PlatformOpenAI && group.IsActive() && service.GroupAllowsImageGeneration(group) {
+			imageGroupIDs[group.ID] = struct{}{}
+		}
+	}
+	if len(imageGroupIDs) == 0 {
+		return []webImageModelItem{}, nil
+	}
+
+	seen := make(map[string]struct{})
+	models := make([]string, 0, len(defaultWebImageModels))
+	add := func(model string) {
+		model = strings.TrimSpace(model)
+		if !isWebImageModel(model) {
+			return
+		}
+		key := strings.ToLower(model)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		models = append(models, model)
+	}
+
+	if h.channelService != nil {
+		channels, err := h.channelService.ListAvailable(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, ch := range channels {
+			if ch.Status != service.StatusActive {
+				continue
+			}
+			channelHasImageGroup := false
+			for _, group := range ch.Groups {
+				if _, ok := imageGroupIDs[group.ID]; ok && group.Platform == service.PlatformOpenAI {
+					channelHasImageGroup = true
+					break
+				}
+			}
+			if !channelHasImageGroup {
+				continue
+			}
+			for _, model := range ch.SupportedModels {
+				if model.Platform == service.PlatformOpenAI {
+					add(model.Name)
+				}
+			}
+		}
+	}
+	for _, model := range defaultWebImageModels {
+		add(model)
+	}
+
+	sort.SliceStable(models, func(i, j int) bool {
+		return strings.ToLower(models[i]) < strings.ToLower(models[j])
+	})
+	out := make([]webImageModelItem, 0, len(models))
+	for _, model := range models {
+		out = append(out, webImageModelItem{Value: model, Label: model})
+	}
+	return out, nil
+}
+
+func isWebImageModel(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	return strings.HasPrefix(model, "gpt-image-")
+}
+
 func (h *OpenAIGatewayHandler) prepareWebImageAPIKey(ctx context.Context, userID int64, req webImageGenerateRequest, sizeTier string) (*service.APIKey, *service.UserSubscription, error) {
 	groups, err := h.apiKeyService.GetAvailableGroups(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
-	group, subscription, err := h.selectWebImageGroup(ctx, userID, groups)
+	group, subscription, err := h.selectWebImageGroup(ctx, userID, groups, req.Model)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -171,7 +290,9 @@ func (h *OpenAIGatewayHandler) prepareWebImageAPIKey(ctx context.Context, userID
 	return apiKey, subscription, nil
 }
 
-func (h *OpenAIGatewayHandler) selectWebImageGroup(ctx context.Context, userID int64, groups []service.Group) (*service.Group, *service.UserSubscription, error) {
+func (h *OpenAIGatewayHandler) selectWebImageGroup(ctx context.Context, userID int64, groups []service.Group, model string) (*service.Group, *service.UserSubscription, error) {
+	var fallbackGroup *service.Group
+	var fallbackSubscription *service.UserSubscription
 	for i := range groups {
 		group := &groups[i]
 		if group.Platform != service.PlatformOpenAI || !group.IsActive() || !service.GroupAllowsImageGeneration(group) {
@@ -188,9 +309,39 @@ func (h *OpenAIGatewayHandler) selectWebImageGroup(ctx context.Context, userID i
 			}
 			subscription = sub
 		}
-		return group, subscription, nil
+		if fallbackGroup == nil {
+			fallbackGroup = group
+			fallbackSubscription = subscription
+		}
+		if h.webImageGroupSupportsModel(ctx, group.ID, model) {
+			return group, subscription, nil
+		}
+	}
+	if fallbackGroup != nil {
+		return fallbackGroup, fallbackSubscription, nil
 	}
 	return nil, nil, fmt.Errorf("image generation is not enabled for your group")
+}
+
+func (h *OpenAIGatewayHandler) webImageGroupSupportsModel(ctx context.Context, groupID int64, model string) bool {
+	for _, defaultModel := range defaultWebImageModels {
+		if strings.EqualFold(defaultModel, model) {
+			return true
+		}
+	}
+	if h.channelService == nil {
+		return false
+	}
+	ch, err := h.channelService.GetChannelForGroup(ctx, groupID)
+	if err != nil || ch == nil {
+		return false
+	}
+	for _, supported := range ch.SupportedModels() {
+		if supported.Platform == service.PlatformOpenAI && strings.EqualFold(supported.Name, model) {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *OpenAIGatewayHandler) findOrCreateWebImageAPIKey(ctx context.Context, userID, groupID int64) (*service.APIKey, error) {

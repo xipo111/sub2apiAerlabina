@@ -401,6 +401,8 @@
     qualityLow: 'Low',
     qualityMedium: 'Medium',
     qualityHigh: 'High',
+    modelLoadFailed: 'Failed to load model list. Default models are shown.',
+    noModels: 'No image models are available for your current group',
     billingNote: 'Usage is charged after successful generation. Failed requests are not charged.',
     generate: 'Generate',
     generating: 'Generating...',

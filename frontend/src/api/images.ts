@@ -19,6 +19,11 @@ export interface ImageGenerateResponse {
   data: ImageGenerateItem[]
 }
 
+export interface ImageModelOption {
+  value: string
+  label: string
+}
+
 export async function generateImage(payload: ImageGenerateRequest): Promise<ImageGenerateResponse> {
   const { data } = await apiClient.post<ImageGenerateResponse>('/images/generate', payload, {
     timeout: 180000
@@ -26,8 +31,14 @@ export async function generateImage(payload: ImageGenerateRequest): Promise<Imag
   return data
 }
 
+export async function listImageModels(): Promise<ImageModelOption[]> {
+  const { data } = await apiClient.get<ImageModelOption[]>('/images/models')
+  return data
+}
+
 export const imagesAPI = {
-  generate: generateImage
+  generate: generateImage,
+  listModels: listImageModels
 }
 
 export default imagesAPI

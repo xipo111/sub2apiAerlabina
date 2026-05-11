@@ -33,11 +33,17 @@
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
                 <label for="model" class="input-label">{{ t('imageGenerator.model') }}</label>
-                <select id="model" v-model="form.model" :disabled="loading" class="input mt-1">
+                <select id="model" v-model="form.model" :disabled="loading || modelLoading || modelOptions.length === 0" class="input mt-1">
                   <option v-for="model in modelOptions" :key="model.value" :value="model.value">
                     {{ model.label }}
                   </option>
                 </select>
+                <p v-if="modelError" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  {{ modelError }}
+                </p>
+                <p v-if="!modelLoading && modelOptions.length === 0" class="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {{ t('imageGenerator.noModels') }}
+                </p>
               </div>
 
               <div>
@@ -136,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -155,13 +161,16 @@ const form = reactive({
 })
 
 const loading = ref(false)
+const modelLoading = ref(false)
 const errorMessage = ref('')
+const modelError = ref('')
 const images = ref<Array<{ src: string; alt: string }>>([])
 
-const modelOptions = [
+const fallbackModelOptions = [
   { value: 'gpt-image-1.5', label: 'gpt-image-1.5' },
   { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' }
 ]
+const modelOptions = ref([...fallbackModelOptions])
 
 const sizeOptions = [
   { value: '1024x1024', label: '1024 x 1024' },
@@ -181,8 +190,30 @@ const qualityOptions = computed(() => [
 const balanceText = computed(() => (authStore.user?.balance ?? 0).toFixed(2))
 
 const canSubmit = computed(() => {
-  return !loading.value && form.prompt.trim().length > 0 && form.n >= 1 && form.n <= 4
+  return !loading.value && !modelLoading.value && modelOptions.value.length > 0 && form.prompt.trim().length > 0 && form.n >= 1 && form.n <= 4
 })
+
+onMounted(() => {
+  void loadModelOptions()
+})
+
+async function loadModelOptions(): Promise<void> {
+  modelLoading.value = true
+  modelError.value = ''
+  try {
+    const models = await imagesAPI.listModels()
+    modelOptions.value = Array.isArray(models) ? models.filter((item) => item.value) : []
+    if (modelOptions.value.length > 0 && !modelOptions.value.some((item) => item.value === form.model)) {
+      form.model = modelOptions.value[0].value
+    }
+  } catch (error: any) {
+    modelOptions.value = [...fallbackModelOptions]
+    form.model = modelOptions.value[0].value
+    modelError.value = error?.message || t('imageGenerator.modelLoadFailed')
+  } finally {
+    modelLoading.value = false
+  }
+}
 
 async function handleGenerate(): Promise<void> {
   if (!canSubmit.value) return

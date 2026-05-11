@@ -401,6 +401,8 @@
     qualityLow: '低',
     qualityMedium: '中',
     qualityHigh: '高',
+    modelLoadFailed: '模型列表加载失败，已使用默认模型',
+    noModels: '当前分组没有可用出图模型',
     billingNote: '生成成功后按实际用量扣费，失败不会扣费。',
     generate: '生成图片',
     generating: '生成中...',
