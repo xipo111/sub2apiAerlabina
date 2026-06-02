@@ -1,0 +1,39 @@
+name: Build Custom Sub2API
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - v0.1.133-image-feature
+
+jobs:
+  build-linux-amd64:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg VERSION=0.1.133-image-feature \
+            --build-arg COMMIT=${{ github.sha }} \
+            --build-arg DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+            -t sub2api-custom:latest .
+
+      - name: Extract binary and resources
+        run: |
+          mkdir -p dist
+          cid=$(docker create sub2api-custom:latest)
+          docker cp "$cid:/app/sub2api" dist/sub2api
+          docker cp "$cid:/app/resources" dist/resources
+          docker rm "$cid"
+          chmod +x dist/sub2api
+          tar czf sub2api-v0.1.133-image-feature-linux-amd64.tar.gz -C dist sub2api resources
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sub2api-v0.1.133-image-feature-linux-amd64
+          path: sub2api-v0.1.133-image-feature-linux-amd64.tar.gz
