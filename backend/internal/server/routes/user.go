@@ -43,8 +43,7 @@ func RegisterUserRoutes(
 				notifyEmail.DELETE("", h.User.RemoveNotifyEmail)
 			}
 
-			// TOTP 双因素认证
-			totp := user.Group("/totp")
+			// TOTP 双因素认�?			totp := user.Group("/totp")
 			{
 				totp.GET("/status", h.Totp.GetStatus)
 				totp.GET("/verification-method", h.Totp.GetVerificationMethod)
@@ -76,6 +75,11 @@ func RegisterUserRoutes(
 		channels := authenticated.Group("/channels")
 		{
 			channels.GET("/available", h.AvailableChannel.List)
+		}
+
+		images := authenticated.Group("/images")
+		{
+			images.POST("/generate", h.OpenAIGateway.GenerateWebImage)
 		}
 
 		// 使用记录

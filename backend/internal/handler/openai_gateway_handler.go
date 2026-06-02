@@ -31,6 +31,7 @@ type OpenAIGatewayHandler struct {
 	gatewayService           *service.OpenAIGatewayService
 	billingCacheService      *service.BillingCacheService
 	apiKeyService            *service.APIKeyService
+	subscriptionService      *service.SubscriptionService
 	usageRecordWorkerPool    *service.UsageRecordWorkerPool
 	errorPassthroughService  *service.ErrorPassthroughService
 	contentModerationService *service.ContentModerationService
@@ -78,6 +79,7 @@ func NewOpenAIGatewayHandler(
 	concurrencyService *service.ConcurrencyService,
 	billingCacheService *service.BillingCacheService,
 	apiKeyService *service.APIKeyService,
+	subscriptionService *service.SubscriptionService,
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	contentModerationService *service.ContentModerationService,
@@ -95,6 +97,7 @@ func NewOpenAIGatewayHandler(
 		gatewayService:           gatewayService,
 		billingCacheService:      billingCacheService,
 		apiKeyService:            apiKeyService,
+		subscriptionService:      subscriptionService,
 		usageRecordWorkerPool:    usageRecordWorkerPool,
 		errorPassthroughService:  errorPassthroughService,
 		contentModerationService: contentModerationService,
