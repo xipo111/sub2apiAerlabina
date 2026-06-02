@@ -217,7 +217,11 @@ func (h *OpenAIGatewayHandler) findOrCreateWebImageAPIKey(ctx context.Context, u
 }
 
 func (h *OpenAIGatewayHandler) checkWebImageEstimatedCost(ctx context.Context, user *service.User, apiKey *service.APIKey, group *service.Group, subscription *service.UserSubscription, model string, sizeTier string, count int) error {
-	if err := h.billingCacheService.CheckBillingEligibility(ctx, user, apiKey, group, subscription); err != nil {
+	platform := ""
+        if group != nil {
+                platform = string(group.Platform)
+        }
+        if err := h.billingCacheService.CheckBillingEligibility(ctx, user, apiKey, group, subscription, platform); err != nil {
 		return err
 	}
 	if group != nil && group.IsSubscriptionType() && subscription != nil {
