@@ -43,7 +43,8 @@ func RegisterUserRoutes(
 				notifyEmail.DELETE("", h.User.RemoveNotifyEmail)
 			}
 
-			// TOTP 双因素认�?			totp := user.Group("/totp")
+			// TOTP 双因素认证
+			totp := user.Group("/totp")
 			{
 				totp.GET("/status", h.Totp.GetStatus)
 				totp.GET("/verification-method", h.Totp.GetVerificationMethod)
